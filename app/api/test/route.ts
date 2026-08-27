@@ -1,20 +1,23 @@
-import net from 'node:net';
 import { NextResponse } from 'next/server';
+import net from 'node:net';
 
 export const runtime = 'nodejs';
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   const host = process.env.MSSQL_SERVER;
   const port = Number(process.env.MSSQL_PORT || 1433);
 
   if (!host) {
-    return NextResponse.json({
-      success: false,
-      error: 'MSSQL_SERVER is undefined',
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'MSSQL_SERVER is undefined',
+      },
+      { status: 500 }
+    );
   }
 
-  return new Promise((resolve) => {
+  return new Promise<Response>((resolve) => {
     const socket = new net.Socket();
 
     const timeout = setTimeout(() => {
@@ -44,7 +47,7 @@ export async function GET() {
       );
     });
 
-    socket.on('error', (error) => {
+    socket.on('error', (error: NodeJS.ErrnoException) => {
       clearTimeout(timeout);
 
       resolve(
@@ -53,7 +56,7 @@ export async function GET() {
           host,
           port,
           error: error.message,
-          code: (error as NodeJS.ErrnoException).code,
+          code: error.code,
         })
       );
     });
