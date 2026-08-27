@@ -1,5 +1,4 @@
 import sql from 'mssql';
-import { getRequestContext } from '@cloudflare/next-on-pages';
 
 export type AppDatabase = 'RF_World' | 'RF_User' | 'BILLING' | 'TS_DB' | 'TS_ITEMS';
 
@@ -7,18 +6,15 @@ declare global {
   var _mssqlPool: sql.ConnectionPool | undefined;
 }
 
-// Helper to resolve env vars dynamically at runtime
+// Dynamically resolves environment variables without needing @cloudflare/next-on-pages
 function getEnv(key: string): string | undefined {
-  // 1. Try standard process.env
   if (process.env[key]) return process.env[key];
 
-  // 2. Try Cloudflare Pages runtime bindings context
-  try {
-    const cfEnv = getRequestContext()?.env as Record<string, string>;
-    return cfEnv?.[key];
-  } catch {
-    return undefined;
+  if (typeof globalThis !== 'undefined' && (globalThis as any).process?.env?.[key]) {
+    return (globalThis as any).process.env[key];
   }
+
+  return undefined;
 }
 
 function getConfig(): sql.config {
@@ -43,7 +39,6 @@ function getConfig(): sql.config {
 
 export async function getDbPool(): Promise<sql.ConnectionPool> {
   if (!global._mssqlPool) {
-    // Read fresh config inside the function call
     global._mssqlPool = await new sql.ConnectionPool(getConfig()).connect();
   }
   return global._mssqlPool;
@@ -53,4 +48,3 @@ export async function queryDb(dbName: AppDatabase, queryText: string) {
   const pool = await getDbPool();
   return pool.request().query(`USE [${dbName}]; ${queryText}`);
 }
-
