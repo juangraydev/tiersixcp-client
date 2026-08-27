@@ -130,10 +130,9 @@ export default function AuthPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setErrors((prev) => ({
-          ...prev,
-          general: data.error || 'Invalid username or password.',
-        }));
+        // Directly extract the server message ("login in to the game first")
+        const serverMessage = data.message || data.error || 'An unexpected error occurred.';
+        setErrors((prev) => ({ ...prev,general: serverMessage}));
         return;
       }
 

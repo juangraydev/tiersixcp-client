@@ -21,18 +21,24 @@ export async function POST(request: Request) {
 
     const pool = await getDbPool();
 
+    // Query credentials from tbl_rfaccount and session state from tbl_UserAccount
     const result = await pool
       .request()
       .input('username', sql.VarChar(13), username)
       .input('password', sql.VarChar(32), password)
       .query(`
         SELECT 
-          CONVERT(varchar(13), [id]) AS username,
-          [accounttype],
-          [email]
-        FROM [RF_User].[dbo].[tbl_rfaccount]
-        WHERE [id] = CONVERT(binary, @username)
-          AND [password] = CONVERT(binary, @password)
+          CONVERT(varchar(13), acc.[id]) AS username,
+          acc.[accounttype],
+          acc.[email],
+          usr.[lastlogintime],
+          usr.[lastlogofftime],
+          usr.[lastconnectip]
+        FROM [RF_User].[dbo].[tbl_rfaccount] acc
+        INNER JOIN [RF_User].[dbo].[tbl_UserAccount] usr 
+          ON acc.[id] = usr.[id]
+        WHERE acc.[id] = CONVERT(binary, @username)
+          AND acc.[password] = CONVERT(binary, @password)
       `);
 
     if (result.recordset.length === 0) {
@@ -43,6 +49,28 @@ export async function POST(request: Request) {
     }
 
     const user = result.recordset[0];
+
+    // Check if fields are missing/null OR if user is offline
+    const hasLogData =
+      user.lastlogintime &&
+      user.lastlogofftime &&
+      user.lastconnectip &&
+      user.lastconnectip.trim() !== '';
+
+    const isGameLoggedIn =
+      hasLogData &&
+      new Date(user.lastlogintime) >= new Date(user.lastlogofftime);
+
+    if (!isGameLoggedIn) {
+      return NextResponse.json(
+        {
+          status: 403,
+          message: 'You must be logged into the game client to access the panel',
+          data: null,
+        },
+        { status: 403 }
+      );
+    }
 
     // 1. Create JWT Token (expires in 1 day)
     const token = await new SignJWT({

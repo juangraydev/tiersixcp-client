@@ -77,7 +77,7 @@ export async function POST(request: Request) {
           INSERT INTO [BILLING].[dbo].[tbl_UserStatus] 
             ([Id], [Status], [DTStartPrem], [DTEndPrem], [Cash])
           VALUES 
-            (CONVERT(binary, @username), '2', GETDATE(), DATEADD(day, 3, GETDATE()), 0)
+            (CONVERT(binary, @username), '2', GETDATE(), DATEADD(day, 365, GETDATE()), 0)
         `);
 
       // Commit transaction if all 3 insertions succeed
