@@ -53,3 +53,4 @@ export async function queryDb(dbName: AppDatabase, queryText: string) {
   const pool = await getDbPool();
   return pool.request().query(`USE [${dbName}]; ${queryText}`);
 }
+
